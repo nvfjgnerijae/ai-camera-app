@@ -1,0 +1,22 @@
+{
+    "name": "AI Camera",
+    "short_name": "AI Camera",
+    "description": "Camera utility for AI workflows",
+    "theme_color": "#000000",
+    "background_color": "#000000",
+    "display": "standalone",
+    "scope": "/",
+    "start_url": "/",
+    "icons": [
+        {
+            "src": "vite.svg",
+            "sizes": "192x192",
+            "type": "image/svg+xml"
+        },
+        {
+            "src": "vite.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml"
+        }
+    ]
+}

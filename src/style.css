@@ -1,0 +1,327 @@
+:root {
+  --bg-color: #000000;
+  --text-color: #ffffff;
+  --accent-color: #0a84ff;
+  /* iOS Blue */
+  --danger-color: #ff453a;
+  /* iOS Red */
+  --overlay-bg: rgba(0, 0, 0, 0.6);
+  --safe-area-top: env(safe-area-inset-top, 20px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 20px);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  overflow: hidden;
+  /* Prevent scrolling */
+  width: 100vw;
+  height: 100vh;
+  /* Prevent bounce on iOS */
+  position: fixed;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* Views */
+.view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-color);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 1;
+}
+
+.view.hidden {
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.view.active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+/* Camera View */
+#camera-view {
+  justify-content: space-between;
+  position: relative;
+}
+
+/* Flash Effect */
+@keyframes flash-animation {
+  0% {
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 0.8;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+.flash-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: white;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.flash-overlay.trigger {
+  animation: flash-animation 0.2s ease-out;
+}
+
+#camera-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+
+.camera-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: calc(120px + var(--safe-area-bottom));
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  /* Distribute items */
+  padding-bottom: var(--safe-area-bottom);
+}
+
+.shutter-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background-color: white;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  background-clip: padding-box;
+  /* Create the gap effect */
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.shutter-btn:active {
+  transform: scale(0.9);
+  opacity: 0.8;
+}
+
+.icon-btn {
+  background: rgba(50, 50, 50, 0.6);
+  border: none;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.icon-btn:active {
+  background: rgba(80, 80, 80, 0.8);
+}
+
+.icon-btn.active {
+  background: var(--accent-color);
+  color: white;
+}
+
+/* Editor View */
+#editor-view {
+  background-color: #1a1a1a;
+}
+
+.editor-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-top: calc(50px + var(--safe-area-top));
+  margin-bottom: calc(80px + var(--safe-area-bottom));
+}
+
+.image-wrapper {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+img#capture-image {
+  display: block;
+  max-width: 100%;
+  max-height: 80vh;
+  /* Leave room for controls */
+}
+
+/* Canvas should overlay exactly on top */
+#drawing-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  /* Let cropper handle events by default */
+  touch-action: none;
+}
+
+/* When in draw mode, canvas catches events */
+.drawing-mode #drawing-canvas {
+  pointer-events: auto;
+}
+
+.editor-controls-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: calc(60px + var(--safe-area-top));
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--safe-area-top) 20px 10px 20px;
+  z-index: 10;
+}
+
+.text-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tools {
+  display: flex;
+  gap: 16px;
+}
+
+.draw-colors {
+  position: absolute;
+  top: calc(70px + var(--safe-area-top));
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(30, 30, 30, 0.9);
+  padding: 8px;
+  border-radius: 20px;
+  z-index: 20;
+}
+
+.draw-colors.hidden {
+  display: none;
+}
+
+.color-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.color-btn.active {
+  border-color: white;
+  transform: scale(1.1);
+}
+
+.editor-controls-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: calc(80px + var(--safe-area-bottom));
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: var(--safe-area-bottom);
+  z-index: 10;
+}
+
+.primary-btn {
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 24px;
+  padding: 12px 32px;
+  font-size: 17px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.primary-btn:active {
+  opacity: 0.9;
+  transform: scale(0.98);
+}
+
+/* Toast */
+.toast {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(50, 50, 50, 0.9);
+  color: white;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* Utility */
+.spacer {
+  width: 44px;
+  /* Same width as icon-btn to balance flex */
+}
