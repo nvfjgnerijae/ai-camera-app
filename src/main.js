@@ -21,6 +21,7 @@ const btnModeDraw = document.getElementById('btn-mode-draw');
 const btnUndo = document.getElementById('btn-undo'); // New
 const btnRedo = document.getElementById('btn-redo'); // New
 const btnCopy = document.getElementById('btn-copy');
+const btnSave = document.getElementById('btn-save'); // New
 const colorBtns = document.querySelectorAll('.color-btn');
 const drawColors = document.getElementById('draw-colors');
 
@@ -319,36 +320,7 @@ function getEventPos(e) {
 
 async function copyToClipboard() {
   try {
-    let finalCanvas;
-
-    if (mode === 'crop' && cropper) {
-      // Just the cropped area
-      finalCanvas = cropper.getCroppedCanvas();
-    } else {
-      // "Draw" captured image + Canvas
-      // Create a temp canvas
-      const w = captureImage.naturalWidth;
-      const h = captureImage.naturalHeight;
-
-      finalCanvas = document.createElement('canvas');
-      finalCanvas.width = w;
-      finalCanvas.height = h;
-      const fCtx = finalCanvas.getContext('2d');
-
-      // Draw Image
-      fCtx.drawImage(captureImage, 0, 0, w, h);
-
-      // Draw Drawing Canvas
-      // Need to map display size to natural size
-      const rect = captureImage.getBoundingClientRect();
-      const scaleX = w / rect.width;
-      const scaleY = h / rect.height;
-
-      fCtx.drawImage(drawingCanvas, 0, 0, w, h); // If canvas.width matched rect.width, we need to scale?
-      // Actually, we set drawingCanvas.width to rect.width (rendered pixels).
-      // So we need to draw it scaled up to natural size.
-      fCtx.drawImage(drawingCanvas, 0, 0, rect.width, rect.height, 0, 0, w, h);
-    }
+    let finalCanvas = await generateFinalCanvas();
 
     try {
       // Create the ClipboardItem with a Promise that resolves to the blob
@@ -373,6 +345,77 @@ async function copyToClipboard() {
 
   } catch (err) {
     console.error('Export failed:', err);
+  }
+}
+
+async function saveImage() {
+  try {
+    const finalCanvas = await generateFinalCanvas();
+
+    finalCanvas.toBlob(async (blob) => {
+      if (!blob) {
+        alert('画像生成に失敗しました');
+        return;
+      }
+
+      // Try Share API first (Mobile friendly)
+      if (navigator.share && navigator.canShare) {
+        const file = new File([blob], "photo.png", { type: "image/png" });
+        const shareData = {
+          files: [file],
+        };
+        if (navigator.canShare(shareData)) {
+          try {
+            await navigator.share(shareData);
+            return; // Success
+          } catch (err) {
+            if (err.name !== 'AbortError') {
+              console.error('Share failed', err);
+            }
+            // If share fails (or user cancels), we might want to fallback or just stop. 
+            // Usually if user cancels share sheet, we don't need to do anything.
+            // But if share API is not really supported or fails, proceed to download.
+          }
+        }
+      }
+
+      // Fallback: Download Link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `photo_${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+    }, 'image/png');
+
+  } catch (err) {
+    console.error('Save failed:', err);
+    alert('保存に失敗しました');
+  }
+}
+
+// Helper to generate canvas from Crop/Draw
+async function generateFinalCanvas() {
+  if (mode === 'crop' && cropper) {
+    return cropper.getCroppedCanvas();
+  } else {
+    const w = captureImage.naturalWidth;
+    const h = captureImage.naturalHeight;
+
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = w;
+    finalCanvas.height = h;
+    const fCtx = finalCanvas.getContext('2d');
+
+    fCtx.drawImage(captureImage, 0, 0, w, h);
+
+    const rect = captureImage.getBoundingClientRect();
+    fCtx.drawImage(drawingCanvas, 0, 0, rect.width, rect.height, 0, 0, w, h);
+
+    return finalCanvas;
   }
 }
 
@@ -435,6 +478,7 @@ colorBtns.forEach(btn => {
 
 // Copy
 btnCopy.addEventListener('click', copyToClipboard);
+btnSave.addEventListener('click', saveImage);
 
 // Init
 initCamera();
