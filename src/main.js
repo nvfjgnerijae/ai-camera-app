@@ -18,6 +18,8 @@ const btnSwitchCamera = document.getElementById('btn-switch-camera');
 const btnRetake = document.getElementById('btn-retake');
 const btnModeCrop = document.getElementById('btn-mode-crop');
 const btnModeDraw = document.getElementById('btn-mode-draw');
+const btnUndo = document.getElementById('btn-undo'); // New
+const btnRedo = document.getElementById('btn-redo'); // New
 const btnCopy = document.getElementById('btn-copy');
 const colorBtns = document.querySelectorAll('.color-btn');
 const drawColors = document.getElementById('draw-colors');
@@ -31,7 +33,13 @@ let mode = 'crop'; // 'crop' | 'draw'
 let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
+
 let drawColor = '#ff3b30'; // Default red
+
+// Undo/Redo State
+let historyStack = [];
+let historyStep = -1;
+const MAX_HISTORY = 10;
 
 // --- Camera Functions ---
 
@@ -188,6 +196,11 @@ function setMode(newMode) {
       // Already in draw mode (or no cropper), just ensure sizing
       resizeCanvasToImage();
     }
+    // Initialize History for new drawing session
+    historyStack = [];
+    historyStep = -1;
+    saveHistory();
+    updateUndoRedoButtons();
   }
 }
 
@@ -232,7 +245,56 @@ function draw(e) {
 }
 
 function stopDrawing() {
+  if (!isDrawing) return;
   isDrawing = false;
+  saveHistory(); // Save state after stroke
+}
+
+// --- Undo/Redo Functions ---
+
+function saveHistory() {
+  // Discard future if we are in middle of stack
+  if (historyStep < historyStack.length - 1) {
+    historyStack = historyStack.slice(0, historyStep + 1);
+  }
+
+  // Save current state
+  const imageData = ctx.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height);
+  historyStack.push(imageData);
+  historyStep++;
+
+  // Limit history
+  if (historyStack.length > MAX_HISTORY) {
+    historyStack.shift();
+    historyStep--;
+  }
+
+  updateUndoRedoButtons();
+}
+
+function undo() {
+  if (historyStep > 0) {
+    historyStep--;
+    restoreHistory();
+  }
+}
+
+function redo() {
+  if (historyStep < historyStack.length - 1) {
+    historyStep++;
+    restoreHistory();
+  }
+}
+
+function restoreHistory() {
+  const imageData = historyStack[historyStep];
+  ctx.putImageData(imageData, 0, 0);
+  updateUndoRedoButtons();
+}
+
+function updateUndoRedoButtons() {
+  btnUndo.disabled = historyStep <= 0;
+  btnRedo.disabled = historyStep >= historyStack.length - 1;
 }
 
 function getEventPos(e) {
@@ -288,23 +350,26 @@ async function copyToClipboard() {
       fCtx.drawImage(drawingCanvas, 0, 0, rect.width, rect.height, 0, 0, w, h);
     }
 
-    finalCanvas.toBlob(async (blob) => {
-      if (!blob) {
-        alert('画像生成に失敗しました');
-        return;
-      }
-      try {
-        const item = new ClipboardItem({ 'image/png': blob });
-        await navigator.clipboard.write([item]);
-        showToast();
-        setTimeout(() => {
-          hideEditor(); // Go back to camera after copy
-        }, 1500);
-      } catch (err) {
-        console.error('Clipboard write failed:', err);
-        alert('クリップボードへの保存に失敗しました。');
-      }
-    }, 'image/png');
+    try {
+      // Create the ClipboardItem with a Promise that resolves to the blob
+      const item = new ClipboardItem({
+        'image/png': new Promise((resolve) => {
+          finalCanvas.toBlob((blob) => {
+            resolve(blob);
+          }, 'image/png');
+        })
+      });
+
+      await navigator.clipboard.write([item]);
+      showToast();
+      setTimeout(() => {
+        hideEditor();
+      }, 1500);
+
+    } catch (err) {
+      console.error('Clipboard write failed:', err);
+      alert('クリップボードへの保存に失敗しました。');
+    }
 
   } catch (err) {
     console.error('Export failed:', err);
@@ -331,9 +396,6 @@ btnRetake.addEventListener('click', () => {
   hideEditor();
 });
 btnModeCrop.addEventListener('click', () => {
-  // If in Draw Mode, warn? Or just Reset Image?
-  // Let's make it simple: If you go back to Crop, you reset the cycle.
-  // Ideally we re-load originalImageSrc.
   if (mode === 'draw') {
     if (confirm('変更を破棄してトリミングに戻りますか？')) {
       captureImage.src = originalImageSrc;
@@ -344,7 +406,11 @@ btnModeCrop.addEventListener('click', () => {
     setMode('crop');
   }
 });
+
 btnModeDraw.addEventListener('click', () => setMode('draw'));
+
+btnUndo.addEventListener('click', undo);
+btnRedo.addEventListener('click', redo);
 
 // Drawing
 drawingCanvas.addEventListener('mousedown', startDrawing);
