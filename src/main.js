@@ -42,6 +42,13 @@ let historyStack = [];
 let historyStep = -1;
 const MAX_HISTORY = 10;
 
+// Zoom State
+let videoTrack = null;
+let zoomCapabilities = { min: 1, max: 1, step: 0.1 };
+let currentZoom = 1;
+let initialPinchDistance = 0;
+let initialZoomAtPinch = 1;
+
 // --- Camera Functions ---
 
 async function initCamera() {
@@ -59,6 +66,21 @@ async function initCamera() {
     };
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
+
+    // Get Video Track & Capabilities for Zoom
+    videoTrack = stream.getVideoTracks()[0];
+    if (videoTrack) {
+      const capabilities = videoTrack.getCapabilities(); // Might need polyfill check or ensure support
+      if (capabilities && capabilities.zoom) {
+        zoomCapabilities = {
+          min: capabilities.zoom.min,
+          max: capabilities.zoom.max,
+          step: capabilities.zoom.step
+        };
+        currentZoom = zoomCapabilities.min;
+      }
+    }
+
     await video.play();
   } catch (err) {
     console.error('Camera init error:', err);
@@ -220,6 +242,53 @@ function resizeCanvasToImage() {
   ctx.lineWidth = 3;
   ctx.strokeStyle = drawColor;
 }
+
+// --- Zoom Logic ---
+
+function handlePinchStart(e) {
+  if (e.touches.length === 2) {
+    initialPinchDistance = getPinchDistance(e);
+    initialZoomAtPinch = currentZoom;
+  }
+}
+
+function handlePinchMove(e) {
+  if (e.touches.length === 2) {
+    e.preventDefault(); // Prevent browser zoom/scroll
+
+    if (zoomCapabilities.max <= zoomCapabilities.min) return; // No zoom support
+
+    const currentDistance = getPinchDistance(e);
+    if (initialPinchDistance === 0) return;
+
+    const scale = currentDistance / initialPinchDistance;
+    let newZoom = initialZoomAtPinch * scale;
+
+    // Clamp
+    newZoom = Math.max(zoomCapabilities.min, Math.min(newZoom, zoomCapabilities.max));
+
+    if (Math.abs(newZoom - currentZoom) > 0.05) { // Threshold
+      applyZoom(newZoom);
+    }
+  }
+}
+
+function getPinchDistance(e) {
+  const dx = e.touches[0].clientX - e.touches[1].clientX;
+  const dy = e.touches[0].clientY - e.touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function applyZoom(zoom) {
+  if (!videoTrack) return;
+  try {
+    videoTrack.applyConstraints({ advanced: [{ zoom: zoom }] });
+    currentZoom = zoom;
+  } catch (err) {
+    console.error('Zoom apply failed', err);
+  }
+}
+
 
 // --- Drawing Logic ---
 
@@ -431,6 +500,10 @@ function showToast() {
 // Camera
 btnShutter.addEventListener('click', takePicture);
 btnSwitchCamera.addEventListener('click', switchCamera);
+
+// Zoom Pinch Listeners
+cameraView.addEventListener('touchstart', handlePinchStart, { passive: false });
+cameraView.addEventListener('touchmove', handlePinchMove, { passive: false });
 
 // Editor
 btnRetake.addEventListener('click', () => {

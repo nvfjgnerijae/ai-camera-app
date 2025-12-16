@@ -325,3 +325,23 @@ img#capture-image {
   width: 44px;
   /* Same width as icon-btn to balance flex */
 }
+
+/* Fixes for Native Feel */
+body {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hide video controls on iOS */
+video::-webkit-media-controls,
+video::-webkit-media-controls-play-button,
+video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  opacity: 0;
+  pointer-events: none;
+}
