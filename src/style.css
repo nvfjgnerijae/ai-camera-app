@@ -26,6 +26,9 @@ body {
   /* Prevent scrolling */
   width: 100vw;
   height: 100vh;
+  /* Fallback */
+  height: 100dvh;
+  /* Stable mobile viewport height */
   /* Prevent bounce on iOS */
   position: fixed;
 }
@@ -344,4 +347,13 @@ video::-webkit-media-controls-start-playback-button {
   display: none !important;
   opacity: 0;
   pointer-events: none;
+}
+
+/* Aggressively hide all video controls */
+video::-webkit-media-controls-enclosure {
+  display: none !important;
+}
+
+video::-webkit-media-controls {
+  display: none !important;
 }

@@ -498,7 +498,15 @@ function showToast() {
 // --- Event Listeners ---
 
 // Camera
-btnShutter.addEventListener('click', takePicture);
+// Camera
+// Use pointerdown or touchstart to capture immediately to reduce shake
+const handleShutter = (e) => {
+  e.preventDefault(); // Prevent ghost clicks
+  takePicture();
+};
+btnShutter.addEventListener('touchstart', handleShutter, { passive: false });
+btnShutter.addEventListener('mousedown', handleShutter);
+// btnShutter.addEventListener('click', takePicture); // Removed click to prevent double trigger or delay
 btnSwitchCamera.addEventListener('click', switchCamera);
 
 // Zoom Pinch Listeners
