@@ -509,6 +509,47 @@ btnShutter.addEventListener('mousedown', handleShutter);
 // btnShutter.addEventListener('click', takePicture); // Removed click to prevent double trigger or delay
 btnSwitchCamera.addEventListener('click', switchCamera);
 
+// Orientation Handler for Icons
+// Since we lock screen to portrait, we rotate icons to match physical orientation
+window.addEventListener("deviceorientation", (event) => {
+  const { beta, gamma } = event;
+  // beta: front-back tilt [-180, 180]
+  // gamma: left-right tilt [-90, 90]
+
+  // Basic thresholding. 
+  // Portrait: beta ~ 90, gamma ~ 0
+  // Landscape Left: gamma ~ -90
+  // Landscape Right: gamma ~ 90
+  // Upside Down: beta ~ -90
+
+  let angle = 0;
+
+  const absGamma = Math.abs(gamma);
+  const absBeta = Math.abs(beta);
+
+  if (absGamma > absBeta && absGamma > 45) {
+    // Landscape
+    if (gamma > 0) {
+      angle = -90; // Rotate right
+    } else {
+      angle = 90; // Rotate left
+    }
+  } else if (beta < -45) {
+    angle = 180; // Upside down
+  } else {
+    angle = 0; // Portrait
+  }
+
+  // Apply rotation with animation
+  const icons = [btnSwitchCamera.querySelector('svg')]; // Rotate the SVG inside
+  icons.forEach(icon => {
+    if (icon) {
+      icon.style.transition = 'transform 0.3s ease';
+      icon.style.transform = `rotate(${angle}deg)`;
+    }
+  });
+}, true);
+
 // Zoom Pinch Listeners
 cameraView.addEventListener('touchstart', handlePinchStart, { passive: false });
 cameraView.addEventListener('touchmove', handlePinchMove, { passive: false });
